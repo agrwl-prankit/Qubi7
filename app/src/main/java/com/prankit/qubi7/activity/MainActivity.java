@@ -5,9 +5,18 @@ import androidx.appcompat.widget.Toolbar;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
+import android.app.AlertDialog;
+import android.content.Context;
+import android.content.DialogInterface;
+import android.net.ConnectivityManager;
 import android.os.Bundle;
 import android.util.Log;
+import android.widget.Button;
+import android.widget.EditText;
+import android.widget.Toast;
 
+import com.google.android.material.floatingactionbutton.FloatingActionButton;
+import com.google.android.material.textfield.TextInputEditText;
 import com.prankit.qubi7.API;
 import com.prankit.qubi7.ShowUserAdapter;
 import com.prankit.qubi7.model.CreateUserModel;
@@ -28,6 +37,7 @@ import retrofit2.converter.gson.GsonConverterFactory;
 
 public class MainActivity extends AppCompatActivity {
 
+    private TextInputEditText nameET, jobET;
     private final String BASE_URL = "https://reqres.in/";
     private Retrofit retrofit;
     private RecyclerView recyclerView;
@@ -43,12 +53,40 @@ public class MainActivity extends AppCompatActivity {
         setSupportActionBar(toolbar);
         getSupportActionBar().setTitle("Qubi 7 Assignment");
 
+        retrofit = new Retrofit.Builder().baseUrl(BASE_URL).addConverterFactory(GsonConverterFactory.create()).build();
+
         recyclerView = findViewById(R.id.recycleView);
         recyclerView.setHasFixedSize(true);
         layoutManager = new LinearLayoutManager(this, LinearLayoutManager.VERTICAL, false);
 
-        retrofit = new Retrofit.Builder().baseUrl(BASE_URL).addConverterFactory(GsonConverterFactory.create()).build();
-        getUsers();
+        nameET = findViewById(R.id.input_name);
+        jobET = findViewById(R.id.input_job);
+        Button addUser = findViewById(R.id.addUser);
+        Button updateUser = findViewById(R.id.updateUser);
+        addUser.setOnClickListener(v -> {
+            if (nameET.getText().toString().equals("") || jobET.getText().toString().equals("")){
+                Toast.makeText(this, "enter name and job", Toast.LENGTH_SHORT).show();
+            }
+            else createUser(nameET.getText().toString(), jobET.getText().toString());
+        });
+        updateUser.setOnClickListener(v -> {
+            if (nameET.getText().toString().equals("") || jobET.getText().toString().equals("")){
+                Toast.makeText(this, "enter name and job", Toast.LENGTH_SHORT).show();
+            }
+            else updateUser(nameET.getText().toString(), jobET.getText().toString());
+        });
+    }
+
+    @Override
+    protected void onStart() {
+        super.onStart();
+        if (isNetworkConnected()) getUsers();
+        else Toast.makeText(this, "Check your internet connectivity", Toast.LENGTH_SHORT).show();
+    }
+
+    private boolean isNetworkConnected() {
+        ConnectivityManager cm = (ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE);
+        return cm.getActiveNetworkInfo() != null && cm.getActiveNetworkInfo().isConnected();
     }
 
     public void getUsers() {
@@ -77,6 +115,12 @@ public class MainActivity extends AppCompatActivity {
             public void onResponse(Call<CreateUserModel> call, Response<CreateUserModel> response) {
                 if (response.isSuccessful()) {
                     Log.i("createUser", response.body().getCreateAt() + " " + response.body().getId());
+                    new AlertDialog.Builder(MainActivity.this)
+                            .setMessage("User id: " + response.body().getId() + "\nUser created at: " +response.body().getCreateAt())
+                            .setPositiveButton("Ok", null)
+                            .show();
+                    nameET.setText("");
+                    jobET.setText("");
                 } else Log.i("createUserError", response.message());
             }
 
@@ -94,6 +138,12 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onResponse(Call<UpdateUserModel> call, Response<UpdateUserModel> response) {
                 if (response.isSuccessful()) {
+                    new AlertDialog.Builder(MainActivity.this)
+                            .setMessage("User updated at: " +response.body().getUpdatedAt())
+                            .setPositiveButton("Ok", null)
+                            .show();
+                    nameET.setText("");
+                    jobET.setText("");
                     Log.i("updateUser", response.body().getName() + " " + response.body().getJob()
                             + " " + response.body().getUpdatedAt());
                 } else Log.i("updateUserError", response.message());
